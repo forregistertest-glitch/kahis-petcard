@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="th" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KAHIS Pet Card Creator - ระบบสร้างบัตรสัตว์เลี้ยง</title>
+    <!-- Google Fonts: Sarabun และ Barcode 128 Text -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800&family=Libre+Barcode+128+Text&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (for Admin Dashboard UI) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        kuGreen: '#007A4B',
+                        kuDark: '#0A3B25',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- html2pdf.js for High-Quality PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* บังคับฟอนต์เฉพาะส่วนตัวบัตร */
+        .pet-card-container {
+            font-family: 'Sarabun', sans-serif;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .barcode-font {
+            font-family: 'Libre Barcode 128 Text', cursive !important;
+            line-height: 100%;
+        }
+        /* ซ่อน Scrollbar ของพรีวิว แต่ยังเลื่อนได้ถ้าจอเล็ก */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-200">
+
+    <!-- Header Panel -->
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 py-4 px-6 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-kuGreen/10 rounded-lg">
+                    <svg class="w-8 h-8 text-kuGreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">KAHIS Pet Card Creator</h1>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">ระบบจำลองและออกบัตรประจำตัวสัตว์เลี้ยง โรงพยาบาลสัตว์ มก. (ขนาดมาตรฐาน 85.6 x 54.0 มม.)</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2 w-full lg:w-auto justify-end flex-wrap">
+                <!-- Dark Mode Toggle -->
+                <button id="theme-toggle" class="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none mr-2">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.46 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                </button>
+                
+                <!-- Export Front PDF -->
+                <button onclick="exportSinglePDF('front')" class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2.5 rounded-lg font-bold text-xs shadow-md transition-all active:scale-95">
+                    ดาวน์โหลดหน้าบัตร
+                </button>
+                
+                <!-- Export Back PDF -->
+                <button onclick="exportSinglePDF('back')" class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2.5 rounded-lg font-bold text-xs shadow-md transition-all active:scale-95">
+                    ดาวน์โหลดหลังบัตร
+                </button>
+
+                <!-- Export Dual PDF -->
+                <button onclick="exportDualPDF()" class="bg-kuGreen hover:bg-kuGreen/90 text-white px-4 py-2.5 rounded-lg font-bold text-xs shadow-md transition-all transform active:scale-95 flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v12m0 0l-4-4m4 4l4-4m0 4V7m0 0l4 4m-4-4l-4 4"></path>
+                    </svg>
+                    ดาวน์โหลดแบบคู่ (หน้า-หลังพับ)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="max-w-7xl mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Side: Interactive Live Editor (Columns: 5) -->
+        <section class="lg:col-span-5 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm space-y-4">
+            
+            <!-- Tab Controls -->
+            <div class="flex border-b border-gray-200 dark:border-gray-700">
+                <button id="tab-front-btn" onclick="switchTab('front')" class="flex-1 py-2 px-4 text-center font-bold text-sm border-b-2 border-kuGreen text-kuGreen">ข้อมูลหน้าบัตร</button>
+                <button id="tab-back-btn" onclick="switchTab('back')" class="flex-1 py-2 px-4 text-center font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700">ข้อมูลหลังบัตร (8 บรรทัด)</button>
+            </div>
+
+            <!-- Tab 1 Content: Front Card Creator -->
+            <div id="tab-front-content" class="space-y-3 text-sm">
+                <!-- Hospital Info Inputs -->
+                <div class="bg-gray-50 dark:bg-gray-700/30 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3">
+                    <h3 class="text-xs font-bold text-kuGreen dark:text-green-400 uppercase tracking-wider">ข้อมูลโรงพยาบาล (กรอบบน)</h3>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">ชื่อโรงพยาบาลสัตว์</label>
+                        <input type="text" id="input-hospital-name" value="โรงพยาบาลสัตว์ มหาวิทยาลัยเกษตรศาสตร์" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">ที่อยู่บรรทัดที่ 1</label>
+                        <input type="text" id="input-hospital-addr1" value="เลขที่ 50 ถนนงามวงศ์วาน แขวงลาดยาว เขตจตุจักร" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">ที่อยู่บรรทัดที่ 2</label>
+                        <input type="text" id="input-hospital-addr2" value="กรุงเทพมหานคร 10900" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">ที่อยู่บรรทัดที่ 3 (โทรศัพท์)</label>
+                        <input type="text" id="input-hospital-addr3" value="โทรศัพท์ 02-797-1900 ต่อ 3101-3104" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">ที่อยู่บรรทัดที่ 4 (โทรสาร)</label>
+                        <input type="text" id="input-hospital-addr4" value="โทรสาร 02-942-8760" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                </div>
+
+                <!-- Pet Name -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">ชื่อสัตว์เลี้ยง</label>
+                    <input type="text" id="input-pet-name" value="ทดสอบชื่อแบบยาว" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                </div>
+
+                <!-- 2 Column Inputs -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">รหัสประจำตัวสัตว์เลี้ยง</label>
+                        <input type="text" id="input-pet-id" value="68012345" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">ชนิด</label>
+                        <input type="text" id="input-pet-type" value="จระเข้(Crocodylus)" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">พันธุ์</label>
+                    <input type="text" id="input-pet-breed" value="จระเข้สยาม (Crocodylus siamensis)" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">เพศ</label>
+                        <input type="text" id="input-pet-gender" value="FS" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">วันเกิด</label>
+                        <input type="text" id="input-pet-birth" value="31 ธันวาคม พ.ศ. 2568" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">สี</label>
+                        <input type="text" id="input-pet-color" value="dark-green" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">หมู่เลือด</label>
+                        <input type="text" id="input-pet-blood" value="DEA 1-negative" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">รหัสไมโครชิพ</label>
+                    <input type="text" id="input-pet-microchip" value="xxx-xxx-xxxx-xxxx" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                </div>
+
+                <div class="border-t border-gray-100 dark:border-gray-700 my-4 pt-3 space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">รหัสเจ้าของสัตว์เลี้ยง</label>
+                        <input type="text" id="input-owner-id" value="W6812345678" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">เจ้าของสัตว์เลี้ยง</label>
+                        <input type="text" id="input-owner-name" value="นาย ชื่อเจ้าของสัตว์เลี้ยง ชื่อกลางถ้ามี นามสกุลเจ้าของสัตว์" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                    </div>
+                </div>
+
+                <!-- Custom Barcode Value -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">หมายเลขบาร์โค้ด</label>
+                    <input type="text" id="input-barcode" value="52039575" maxlength="15" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-kuGreen focus:border-transparent outline-none">
+                </div>
+
+                <!-- Media Uploaders Panel -->
+                <div class="border-t border-gray-100 dark:border-gray-700 pt-3 space-y-3">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">จัดการไฟล์รูปภาพและการย่อสัดส่วนอัตโนมัติ</h3>
+                    
+                    <!-- Logo Upload -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">อัปโหลดรูปโลโก้ (แนะนำขนาด 193 x 190 px)</label>
+                        <div class="flex gap-2 items-center">
+                            <input type="file" id="logo-uploader" accept="image/*" class="hidden">
+                            <button onclick="document.getElementById('logo-uploader').click()" class="bg-kuGreen/10 hover:bg-kuGreen/20 text-kuGreen dark:text-green-400 px-3 py-2 rounded-lg text-xs font-semibold transition-all">
+                                เลือกรูปโลโก้จริง (193 x 190)
+                            </button>
+                            <button onclick="resetLogoImage()" class="text-red-500 hover:text-red-600 text-xs font-semibold px-2 py-1">
+                                รีเซ็ตเป็น Dummy
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Pet Photo Upload -->
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">อัปโหลดรูปสัตว์เลี้ยง (แนะนำขนาด 200 x 200 px)</label>
+                        <div class="flex gap-2 items-center">
+                            <input type="file" id="image-uploader" accept="image/*" class="hidden">
+                            <button onclick="document.getElementById('image-uploader').click()" class="bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg text-xs font-semibold transition-all">
+                                เลือกรูปสัตว์เลี้ยงจริง (200 x 200)
+                            </button>
+                            <button onclick="resetPetImage()" class="text-red-500 hover:text-red-600 text-xs font-semibold px-2 py-1">
+                                รีเซ็ตเป็น Dummy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2 Content: Back Card Customizer -->
+            <div id="tab-back-content" class="space-y-4 text-sm hidden">
+                <div class="bg-gray-50 dark:bg-gray-700/30 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700 space-y-3">
+                    <h3 class="text-xs font-bold text-kuGreen dark:text-green-400 uppercase tracking-wider">ออกแบบและจัดวางข้อความปกหลัง (8 บรรทัด)</h3>
+                    
+                    <div id="back-rows-inputs" class="space-y-4">
+                        <!-- We will generate 8 rows of customization controls dynamically or explicitly -->
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Right Side: Exact-Dimension Card Preview (Columns: 7) -->
+        <section class="lg:col-span-7 flex flex-col items-center justify-start space-y-6">
+            
+            <!-- SECTION 1: FRONT CARD PREVIEW -->
+            <div class="w-full flex justify-between items-center px-2">
+                <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-kuGreen"></span>
+                    พรีวิวหน้าบัตร (Front Card)
+                </h2>
+                <span class="text-xs text-gray-500 bg-gray-200 dark:bg-gray-800 px-2.5 py-1 rounded-full font-mono">856px × 540px</span>
+            </div>
+
+            <div class="w-full overflow-x-auto no-scrollbar py-2 flex justify-center">
+                <!-- START OF PET CARD FRONT -->
+                <div id="card" class="pet-card-container relative bg-white text-black shadow-2xl flex flex-col justify-between" style="width: 856px; height: 540px; min-width: 856px; min-height: 540px; border: 1px solid #1C1C1E; padding: 10px; box-sizing: border-box; background-color: #ffffff;">
+                    
+                    <!-- Top Frame: Header (836px x 200px) -->
+                    <div class="rounded flex items-center justify-between" style="width: 836px; height: 200px; border: 1px solid #E5E5EA; padding: 10px; box-sizing: border-box; background-color: #ffffff;">
+                        
+                        <!-- Logo Dummy Frame (193px x 180px) -->
+                        <div id="logo-frame" class="relative flex items-center justify-center overflow-hidden" style="width: 193px; height: 180px; border: 1.5px dashed #E5E5EA; border-radius: 4px; box-sizing: border-box; background-color: #fbfcfa;">
+                            <div id="dummy-logo" class="flex flex-col items-center justify-center text-kuGreen gap-1 text-center w-full h-full p-2">
+                                <svg style="width: 50px; height: 50px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                    <polyline points="21 15 16 10 5 21" />
+                                </svg>
+                                <span style="font-family: 'Sarabun', sans-serif; font-weight: 700; font-size: 11px;">โลโก้คณะ (193x190)</span>
+                            </div>
+                            <img id="real-logo-image" class="absolute inset-0 w-full h-full object-contain hidden" alt="KU Veterinary Logo">
+                        </div>
+
+                        <!-- Hospital Name & Address Text Panel (600px x 180px) -->
+                        <div class="flex flex-col justify-between text-black" style="width: 600px; height: 180px; box-sizing: border-box; padding: 10px; overflow: visible;">
+                            <div id="card-hospital-name" style="font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: normal; font-size: 26px; line-height: 100%; letter-spacing: 0%; overflow: visible; white-space: nowrap; text-overflow: ellipsis;">
+                                โรงพยาบาลสัตว์ มหาวิทยาลัยเกษตรศาสตร์
+                            </div>
+                            <div id="card-hospital-addr1" style="font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: normal; font-size: 20px; line-height: 100%; letter-spacing: 0%; overflow: visible; white-space: nowrap; text-overflow: ellipsis;">
+                                เลขที่ 50 ถนนงามวงศ์วาน แขวงลาดยาว เขตจตุจักร
+                            </div>
+                            <div id="card-hospital-addr2" style="font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: normal; font-size: 20px; line-height: 100%; letter-spacing: 0%; overflow: visible; white-space: nowrap; text-overflow: ellipsis;">
+                                กรุงเทพมหานคร 10900
+                            </div>
+                            <div id="card-hospital-addr3" style="font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: normal; font-size: 20px; line-height: 100%; letter-spacing: 0%; overflow: visible; white-space: nowrap; text-overflow: ellipsis;">
+                                โทรศัพท์ 02-797-1900 ต่อ 3101-3104
+                            </div>
+                            <div id="card-hospital-addr4" style="font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: normal; font-size: 20px; line-height: 100%; letter-spacing: 0%; overflow: visible; white-space: nowrap; text-overflow: ellipsis;">
+                                โทรสาร 02-942-8760
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Bottom Frame: Dynamic Content Wrapper (836px x 302px) -->
+                    <div class="flex justify-between" style="width: 836px; height: 302px; box-sizing: border-box;">
+                        
+                        <!-- Bottom-Left: Patient & Owner Details Panel (595px x 302px) - Internal Border is Light Gray (#E5E5EA) -->
+                        <div class="rounded flex flex-col justify-start text-black" style="width: 595px; height: 302px; border: 1px solid #E5E5EA; padding: 10px; gap: 10px; box-sizing: border-box; background-color: #ffffff;">
+                            
+                            <!-- บรรทัดแรก: ชื่อสัตว์เลี้ยง (575px x 45px) - ปรับลดขนาดอักษรสีดำเป็น 20px พร้อม padding ป้องกันขอบบดบัง -->
+                            <div style="width: 575px; height: 45px; display: flex; align-items: flex-end; gap: 10px; box-sizing: border-box; overflow: visible;">
+                                <span style="width: 116px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 20px; color: #7D7D7D; line-height: 1.2;">ชื่อสัตว์เลี้ยง</span>
+                                <span id="card-pet-name" style="flex-grow: 1; min-width: 0; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 20px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px;">ทดสอบชื่อแบบยาว</span>
+                            </div>
+
+                            <!-- บรรทัดที่สอง: รหัสประจำตัวสัตว์เลี้ยง (575px x 26px) - ขยายความสูงเป็น 26px และลดขนาดฟอนต์เป็น 15px เพื่อให้สระสระบนสระล่างมีระเบียบ -->
+                            <div style="width: 575px; height: 26px; display: flex; align-items: flex-end; gap: 10px; box-sizing: border-box; overflow: visible;">
+                                <span style="width: 165px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">รหัสประจำตัวสัตว์เลี้ยง</span>
+                                <span id="card-pet-id" style="flex-grow: 1; min-width: 0; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px;">68012345</span>
+                            </div>
+
+                            <!-- บรรทัดสาม: ชนิด และ พันธุ์ (575px x 26px) -->
+                            <div style="width: 575px; height: 26px; display: flex; align-items: flex-end; gap: 10px; box-sizing: border-box; overflow: visible;">
+                                <span style="width: 34px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">ชนิด</span>
+                                <span id="card-pet-type" style="flex-grow: 1; min-width: 0; max-width: 150px; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px; margin-right: 8px;">จระเข้(Crocodylus)</span>
+                                <span style="width: 35px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">พันธุ์</span>
+                                <span id="card-pet-breed" style="flex-grow: 1; min-width: 0; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px;">จระเข้สยาม (Crocodylus siamensis)</span>
+                            </div>
+
+                            <!-- บรรทัดสี่: เพศ, วันเกิด, สี (575px x 26px) -->
+                            <div style="width: 575px; height: 26px; display: flex; align-items: flex-end; gap: 10px; box-sizing: border-box; overflow: visible;">
+                                <span style="width: 30px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">เพศ</span>
+                                <span id="card-pet-gender" style="width: 25px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px; margin-right: 8px;">FS</span>
+                                <span style="width: 48px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">วันเกิด</span>
+                                <span id="card-pet-birth" style="flex-grow: 1; min-width: 0; max-width: 180px; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px; margin-right: 8px;">31 ธันวาคม พ.ศ. 2568</span>
+                                <span style="width: 15px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">สี</span>
+                                <span id="card-pet-color" style="flex-grow: 1; min-width: 0; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px;">dark-green</span>
+                            </div>
+
+                            <!-- บรรทัดที่ห้า: หมู่เลือด และ รหัสไมโครชิพ (575px x 26px) -->
+                            <div style="width: 575px; height: 26px; display: flex; align-items: flex-end; gap: 10px; box-sizing: border-box; overflow: visible;">
+                                <span style="width: 60px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">หมู่เลือด</span>
+                                <span id="card-pet-blood" style="flex-grow: 1; min-width: 0; max-width: 150px; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px; margin-right: 8px;">DEA 1-negative</span>
+                                <span style="width: 99px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">รหัสไมโครชิพ</span>
+                                <span id="card-pet-microchip" style="flex-grow: 1; min-width: 0; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px;">xxx-xxx-xxxx-xxxx</span>
+                            </div>
+
+                            <!-- เส้นคั่นปะสีเทาอ่อนพิเศษ -->
+                            <div class="flex flex-col justify-between" style="width: 575px; height: 11px; box-sizing: border-box; overflow: visible;">
+                                <div style="height: 10px; width: 100%;"></div>
+                                <div style="width: 575px; height: 1px; border-top: 1px dashed #E5E5EA;"></div>
+                            </div>
+
+                            <!-- บรรทัดที่หก: รหัสเจ้าของสัตว์เลี้ยง (575px x 26px) -->
+                            <div style="width: 575px; height: 26px; display: flex; align-items: flex-end; gap: 10px; box-sizing: border-box; overflow: visible;">
+                                <span style="width: 150px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">รหัสเจ้าของสัตว์เลี้ยง</span>
+                                <span id="card-owner-id" style="flex-grow: 1; min-width: 0; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px;">W6812345678</span>
+                            </div>
+
+                            <!-- บรรทัดที่เจ็ด: เจ้าของสัตว์เลี้ยง (575px x 26px) - สระและวรรณยุกต์เรียงสวย สมดุล ไร้รอยซ้อนทับแล้วครับ -->
+                            <div style="width: 575px; height: 26px; display: flex; align-items: flex-end; gap: 10px; box-sizing: border-box; overflow: visible;">
+                                <span style="width: 119px; flex-shrink: 0; font-family: 'Sarabun', sans-serif; font-weight: 400; font-style: italic; font-size: 15px; color: #7D7D7D; line-height: 1.2;">เจ้าของสัตว์เลี้ยง</span>
+                                <span id="card-owner-name" style="flex-grow: 1; min-width: 0; font-family: 'Sarabun', sans-serif; font-weight: 700; font-style: italic; font-size: 15px; color: #000000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; padding-top: 8px; margin-top: -8px; padding-bottom: 4px; margin-bottom: -4px;">นาย ชื่อเจ้าของสัตว์เลี้ยง ชื่อกลางถ้ามี นามสกุลเจ้าของสัตว์</span>
+                            </div>
+
+                        </div>
+
+                        <!-- Bottom-Right: Picture/Dummy Frame & Barcode (231px x 302px) -->
+                        <div class="rounded flex flex-col items-center justify-between" style="width: 231px; height: 302px; border: 1px solid #E5E5EA; padding: 10px; box-sizing: border-box; background-color: #ffffff;">
+                            
+                            <!-- Dashed Media Frame (200px x 200px) -->
+                            <div id="media-frame" class="relative flex items-center justify-center overflow-hidden" style="width: 200px; height: 200px; border: 1.5px dashed #E5E5EA; border-radius: 4px; box-sizing: border-box; background-color: #f7f7f7;">
+                                <svg id="dummy-icon" style="width: 90px; height: 90px;" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" fill="none">
+                                    <rect x="15" y="15" width="170" height="170" rx="16" fill="#F2F2F7" />
+                                    <g fill="none" stroke="#AEAEB2" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="25" y="25" width="150" height="150" rx="12" />
+                                        <circle cx="65" cy="65" r="15" />
+                                        <path d="M 35 155 L 85 95 L 125 135 L 145 115 L 165 135" />
+                                    </g>
+                                </svg>
+                                <img id="real-pet-image" class="absolute inset-0 w-full h-full object-cover hidden" alt="Pet Image">
+                            </div>
+
+                            <!-- Barcode Space (211px x 72px) -->
+                            <div class="flex items-center justify-center overflow-hidden" style="width: 211px; height: 72px; padding: 0 10px; box-sizing: border-box;">
+                                <div id="card-barcode" class="barcode-font text-black text-center" style="font-size: 72px; width: 100%;">
+                                    52039575
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- END OF PET CARD FRONT -->
+            </div>
+
+            <!-- SECTION 2: BACK COVER PREVIEW -->
+            <div class="w-full flex justify-between items-center px-2 pt-4">
+                <h2 class="text-md font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                    พรีวิวหลังบัตร (Back Cover)
+                </h2>
+                <span class="text-xs text-gray-500 bg-gray-200 dark:bg-gray-800 px-2.5 py-1 rounded-full font-mono">856px × 540px</span>
+            </div>
+
+            <div class="w-full overflow-x-auto no-scrollbar py-2 flex justify-center">
+                <!-- START OF PET CARD BACK -->
+                <div id="card-back" class="pet-card-container relative bg-white text-black shadow-2xl flex flex-col justify-between" style="width: 856px; height: 540px; min-width: 856px; min-height: 540px; border: 1px solid #1C1C1E; padding: 10px; box-sizing: border-box; background-color: #ffffff;">
+                    
+                    <!-- Inner wrapper containing margin blocks -->
+                    <div id="card-back-inner" class="rounded flex flex-col justify-between text-black" style="width: 836px; height: 520px; border: 1px solid #E5E5EA; padding: 80px 132px; box-sizing: border-box; background-color: #ffffff; overflow: hidden;">
+                        
+                        <!-- 8 Rows rendering dynamic template content -->
+                        <div id="back-row-1" class="w-full flex" style="min-height: 24px;"></div>
+                        <div id="back-row-2" class="w-full flex" style="min-height: 24px;"></div>
+                        <div id="back-row-3" class="w-full flex" style="min-height: 24px;"></div>
+                        <div id="back-row-4" class="w-full flex" style="min-height: 24px;"></div>
+                        <div id="back-row-5" class="w-full flex" style="min-height: 24px;"></div>
+                        <div id="back-row-6" class="w-full flex" style="min-height: 24px;"></div>
+                        <div id="back-row-7" class="w-full flex" style="min-height: 24px;"></div>
+                        <div id="back-row-8" class="w-full flex" style="min-height: 24px;"></div>
+
+                    </div>
+
+                </div>
+                <!-- END OF PET CARD BACK -->
+            </div>
+            
+        </section>
+        
+    </main>
+
+    <!-- Hidden Printable Dual Side-by-Side Canvas for PDF Folding Layout -->
+    <div id="card-dual-print" class="bg-white" style="display: none; width: 1752px; height: 540px; justify-content: flex-start; align-items: center; padding: 0; box-sizing: border-box;">
+        <!-- Javascript will dynamically clone front and back covers side-by-side here for export -->
+    </div>
+
+    <!-- Floating Footer Credit -->
+    <footer class="max-w-7xl mx-auto text-center py-8 text-xs text-gray-400 dark:text-gray-500">
+        มหาวิทยาลัยเกษตรศาสตร์ โรงพยาบาลสัตว์ คณะสัตวแพทยศาสตร์ © 2026. Created by Poodosaurus
+    </footer>
+
+    <!-- Interactive Logic Block (JavaScript) -->
+    <script>
+        // 1. Dark Mode configuration & initialization
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            document.documentElement.classList.remove('dark');
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+
+        themeToggleBtn.addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+
+            if (localStorage.getItem('color-theme')) {
+                if (localStorage.getItem('color-theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                }
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
+            }
+        });
+
+        // 2. Tab switcher mechanism
+        function switchTab(tab) {
+            const frontBtn = document.getElementById('tab-front-btn');
+            const backBtn = document.getElementById('tab-back-btn');
+            const frontContent = document.getElementById('tab-front-content');
+            const backContent = document.getElementById('tab-back-content');
+
+            if (tab === 'front') {
+                frontBtn.className = "flex-1 py-2 px-4 text-center font-bold text-sm border-b-2 border-kuGreen text-kuGreen";
+                backBtn.className = "flex-1 py-2 px-4 text-center font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+                frontContent.classList.remove('hidden');
+                backContent.classList.add('hidden');
+            } else {
+                backBtn.className = "flex-1 py-2 px-4 text-center font-bold text-sm border-b-2 border-kuGreen text-kuGreen";
+                frontBtn.className = "flex-1 py-2 px-4 text-center font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+                backContent.classList.remove('hidden');
+                frontContent.classList.add('hidden');
+            }
+        }
+
+        // 3. Front Card Live Inputs Links
+        const frontInputs = {
+            'input-pet-name': 'card-pet-name',
+            'input-pet-id': 'card-pet-id',
+            'input-pet-type': 'card-pet-type',
+            'input-pet-breed': 'card-pet-breed',
+            'input-pet-gender': 'card-pet-gender',
+            'input-pet-birth': 'card-pet-birth',
+            'input-pet-color': 'card-pet-color',
+            'input-pet-blood': 'card-pet-blood',
+            'input-pet-microchip': 'card-pet-microchip',
+            'input-owner-id': 'card-owner-id',
+            'input-owner-name': 'card-owner-name',
+            'input-barcode': 'card-barcode',
+            'input-hospital-name': 'card-hospital-name',
+            'input-hospital-addr1': 'card-hospital-addr1',
+            'input-hospital-addr2': 'card-hospital-addr2',
+            'input-hospital-addr3': 'card-hospital-addr3',
+            'input-hospital-addr4': 'card-hospital-addr4'
+        };
+
+        Object.keys(frontInputs).forEach(inputId => {
+            const inputEl = document.getElementById(inputId);
+            const cardEl = document.getElementById(frontInputs[inputId]);
+            
+            if (inputEl && cardEl) {
+                inputEl.addEventListener('input', (e) => {
+                    cardEl.innerText = e.target.value || '';
+                });
+            }
+        });
+
+        // 4. Back Cover Rows Definition (8 Lines matching Frame 361.png)
+        const defaultBackRows = [
+            { text: "เวลาปฏิบัติงาน", size: "large", align: "center", bold: true },
+            { text: "จันทร์ - พฤหัสฯ                       08:30 - 14:00 น.", size: "medium", align: "center", bold: true },
+            { text: "ศุกร์                                      08:30 - 11:00 น.", size: "medium", align: "center", bold: true },
+            { text: "(บ่ายงดรักษา)", size: "small", align: "center", bold: false },
+            { text: "เสาร์ - อาทิตย์                        08:30 - 14:00 น.", size: "medium", align: "center", bold: true },
+            { text: "วันหยุดราชการ                       08:30 - 14:00 น.", size: "medium", align: "center", bold: true },
+            { text: "ภาคค่ำเปิดบริการ / ฉุกเฉิน 24 ชั่วโมง", size: "large", align: "center", bold: true },
+            { text: "จันทร์ - อาทิตย์                       17:30 - 20:00 น.", size: "medium", align: "center", bold: true }
+        ];
+
+        // Generate the 8 customization rows under Back Card Tab
+        const backRowsContainer = document.getElementById('back-rows-inputs');
+        
+        defaultBackRows.forEach((row, index) => {
+            const rowNum = index + 1;
+            const cardRowId = `back-row-${rowNum}`;
+            
+            const controlDiv = document.createElement('div');
+            controlDiv.className = "p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 space-y-2";
+            controlDiv.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-gray-400">บรรทัดที่ ${rowNum}</span>
+                </div>
+                <input type="text" id="back-input-text-${rowNum}" value="${row.text}" class="w-full px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-1 focus:ring-kuGreen outline-none text-xs">
+                
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                        <label class="block text-[10px] text-gray-400 mb-0.5">ขนาดอักษร</label>
+                        <select id="back-input-size-${rowNum}" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded p-1">
+                            <option value="large" ${row.size === 'large' ? 'selected' : ''}>ใหญ่ (24px)</option>
+                            <option value="medium" ${row.size === 'medium' ? 'selected' : ''}>กลาง (16.5px)</option>
+                            <option value="small" ${row.size === 'small' ? 'selected' : ''}>เล็ก (14px)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-gray-400 mb-0.5">การจัดวาง</label>
+                        <select id="back-input-align-${rowNum}" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded p-1">
+                            <option value="left" ${row.align === 'left' ? 'selected' : ''}>ชิดซ้าย</option>
+                            <option value="center" ${row.align === 'center' ? 'selected' : ''}>กึ่งกลาง</option>
+                            <option value="right" ${row.align === 'right' ? 'selected' : ''}>ชิดขวา</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-gray-400 mb-0.5">ความหนา</label>
+                        <select id="back-input-bold-${rowNum}" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded p-1">
+                            <option value="bold" ${row.bold ? 'selected' : ''}>หนา (Bold)</option>
+                            <option value="regular" ${!row.bold ? 'selected' : ''}>ปกติ (Regular)</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            backRowsContainer.appendChild(controlDiv);
+
+            // Function to update the specific preview line
+            const updateBackRowPreview = () => {
+                const textVal = document.getElementById(`back-input-text-${rowNum}`).value;
+                const sizeVal = document.getElementById(`back-input-size-${rowNum}`).value;
+                const alignVal = document.getElementById(`back-input-align-${rowNum}`).value;
+                const boldVal = document.getElementById(`back-input-bold-${rowNum}`).value;
+                
+                const previewRow = document.getElementById(cardRowId);
+                previewRow.innerText = textVal;
+                
+                // Map Font sizes safely
+                let fontSize = "16.5px";
+                if (sizeVal === 'large') fontSize = "24px";
+                if (sizeVal === 'small') fontSize = "14px";
+
+                // Map alignments
+                let justifyValue = "center";
+                if (alignVal === 'left') justifyValue = "flex-start";
+                if (alignVal === 'right') justifyValue = "flex-end";
+
+                // Map Font weight
+                const fontWeight = (boldVal === 'bold') ? '700' : '400';
+
+                // Apply styles inline
+                previewRow.style.fontSize = fontSize;
+                previewRow.style.fontStyle = "italic";
+                previewRow.style.fontWeight = fontWeight;
+                previewRow.style.justifyContent = justifyValue;
+                previewRow.style.alignItems = "center";
+                previewRow.style.width = "100%";
+                previewRow.style.letterSpacing = "0%";
+                previewRow.style.lineHeight = "1.2";
+                previewRow.style.minHeight = "24px";
+            };
+
+            // Bind listeners for instantaneous preview feedback
+            document.getElementById(`back-input-text-${rowNum}`).addEventListener('input', updateBackRowPreview);
+            document.getElementById(`back-input-size-${rowNum}`).addEventListener('change', updateBackRowPreview);
+            document.getElementById(`back-input-align-${rowNum}`).addEventListener('change', updateBackRowPreview);
+            document.getElementById(`back-input-bold-${rowNum}`).addEventListener('change', updateBackRowPreview);
+
+            // Initialize row rendering
+            updateBackRowPreview();
+        });
+
+
+        // 5. Image Processing Utility (Auto Resize and Aspect Ratio Fit using Canvas)
+        function processImageAndFit(file, targetWidth, targetHeight, fitType, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = targetWidth;
+                    canvas.height = targetHeight;
+                    const ctx = canvas.getContext('2d');
+
+                    // Clear canvas and make white background (ideal for logos/contain mode)
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+                    if (fitType === 'cover') {
+                        // Zoom and center crop to fill target dimensions perfectly (ideal for pet photos)
+                        const scale = Math.max(targetWidth / img.width, targetHeight / img.height);
+                        const x = (targetWidth - img.width * scale) / 2;
+                        const y = (targetHeight - img.height * scale) / 2;
+                        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                    } else {
+                        // Fit entire image inside boundaries without cropping (ideal for logo insignia)
+                        const scale = Math.min(targetWidth / img.width, targetHeight / img.height);
+                        const x = (targetWidth - img.width * scale) / 2;
+                        const y = (targetHeight - img.height * scale) / 2;
+                        ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+                    }
+                    callback(canvas.toDataURL('image/png'));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 6. Logo & Pet Photo Upload Events
+        const logoUploader = document.getElementById('logo-uploader');
+        const dummyLogo = document.getElementById('dummy-logo');
+        const realLogoImage = document.getElementById('real-logo-image');
+        const logoFrame = document.getElementById('logo-frame');
+
+        logoUploader.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processImageAndFit(file, 193, 190, 'contain', function(resizedDataUrl) {
+                    realLogoImage.src = resizedDataUrl;
+                    realLogoImage.classList.remove('hidden');
+                    dummyLogo.classList.add('hidden');
+                    logoFrame.style.borderStyle = 'none';
+                });
+            }
+        });
+
+        function resetLogoImage() {
+            logoUploader.value = '';
+            realLogoImage.src = '';
+            realLogoImage.classList.add('hidden');
+            dummyLogo.classList.remove('hidden');
+            logoFrame.style.borderStyle = 'dashed';
+        }
+
+        const imageUploader = document.getElementById('image-uploader');
+        const dummyIcon = document.getElementById('dummy-icon');
+        const realPetImage = document.getElementById('real-pet-image');
+        const mediaFrame = document.getElementById('media-frame');
+
+        imageUploader.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processImageAndFit(file, 200, 200, 'cover', function(resizedDataUrl) {
+                    realPetImage.src = resizedDataUrl;
+                    realPetImage.classList.remove('hidden');
+                    dummyIcon.classList.add('hidden');
+                    mediaFrame.style.borderStyle = 'none';
+                });
+            }
+        });
+
+        function resetPetImage() {
+            imageUploader.value = '';
+            realPetImage.src = '';
+            realPetImage.classList.add('hidden');
+            dummyIcon.classList.remove('hidden');
+            mediaFrame.style.borderStyle = 'dashed';
+        }
+
+        // 7. Exporter Functions
+        function exportSinglePDF(side) {
+            const element = document.getElementById(side === 'front' ? 'card' : 'card-back');
+            const petName = document.getElementById('input-pet-name').value || 'Pet';
+            const petId = document.getElementById('input-pet-id').value || 'ID';
+            const filename = `KAHIS_PetCard_${side.toUpperCase()}_${petId}_${petName}.pdf`;
+
+            const opt = {
+                margin: 0,
+                filename: filename,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: { 
+                    scale: 4,               // Scale up 4x for premium crispness
+                    useCORS: true,
+                    letterRendering: true,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF: { 
+                    unit: 'px', 
+                    format: [856, 540],     // Exact pixel matches
+                    orientation: 'landscape',
+                    hotfixes: ['px_scaling'] 
+                }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // 8. Dual Page Export for folding inside high-quality cover sleeves
+        function exportDualPDF() {
+            const printContainer = document.getElementById('card-dual-print');
+            const frontClone = document.getElementById('card').cloneNode(true);
+            const backClone = document.getElementById('card-back').cloneNode(true);
+            
+            // Clean container
+            printContainer.innerHTML = '';
+            
+            // Strip out shadow for clean print representation
+            frontClone.style.boxShadow = 'none';
+            backClone.style.boxShadow = 'none';
+            
+            printContainer.appendChild(frontClone);
+            
+            // Add a beautiful dashed line folder line in between
+            const foldLine = document.createElement('div');
+            foldLine.style.width = '20px';
+            foldLine.style.height = '540px';
+            foldLine.style.borderLeft = '2.5px dashed #D1D1D6';
+            foldLine.style.marginLeft = '9px';
+            foldLine.style.marginRight = '9px';
+            foldLine.style.boxSizing = 'border-box';
+            printContainer.appendChild(foldLine);
+            
+            printContainer.appendChild(backClone);
+            
+            // Display temporarily for rendering, capture then teardown
+            printContainer.style.display = 'flex';
+            
+            const petName = document.getElementById('input-pet-name').value || 'Pet';
+            const petId = document.getElementById('input-pet-id').value || 'ID';
+            
+            const opt = {
+                margin: 0,
+                filename: `KAHIS_PetCard_Dual_${petId}_${petName}.pdf`,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: { 
+                    scale: 4, 
+                    useCORS: true, 
+                    letterRendering: true,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF: { 
+                    unit: 'px', 
+                    format: [1752, 540], // 856 width + 20 width (fold gap) + 856 width = 1732px + 20px padding margin
+                    orientation: 'landscape',
+                    hotfixes: ['px_scaling']
+                }
+            };
+            
+            html2pdf().set(opt).from(printContainer).save().then(() => {
+                printContainer.style.display = 'none';
+            }).catch(err => {
+                console.error(err);
+                printContainer.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
